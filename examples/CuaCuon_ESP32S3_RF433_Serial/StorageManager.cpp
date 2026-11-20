@@ -25,6 +25,14 @@ void StorageManager::getDefaultSystemConfig(SystemConfig& config) {
     strncpy(config.webPassword, WEB_APP_PASSWORD, sizeof(config.webPassword) - 1);
     strncpy(config.apPassword, WIFI_AP_PASS, sizeof(config.apPassword) - 1);
     config.travelTimeSec = DEFAULT_TRAVEL_TIME_SEC;
+
+    // Cấu hình MQTT mặc định
+    config.mqttEnabled = DEFAULT_MQTT_ENABLED;
+    strncpy(config.mqttServer, DEFAULT_MQTT_SERVER, sizeof(config.mqttServer) - 1);
+    config.mqttPort = DEFAULT_MQTT_PORT;
+    strncpy(config.mqttUser, DEFAULT_MQTT_USER, sizeof(config.mqttUser) - 1);
+    strncpy(config.mqttPass, DEFAULT_MQTT_PASS, sizeof(config.mqttPass) - 1);
+    strncpy(config.mqttTopic, DEFAULT_MQTT_TOPIC, sizeof(config.mqttTopic) - 1);
 }
 
 bool StorageManager::begin() {
@@ -179,6 +187,12 @@ bool StorageManager::saveSystemConfig(const SystemConfig& config) {
     s_prefs.putString("web_pass", config.webPassword);
     s_prefs.putString("ap_pass", config.apPassword);
     s_prefs.putUShort("travel_t", config.travelTimeSec);
+    s_prefs.putBool("mq_en", config.mqttEnabled);
+    s_prefs.putString("mq_srv", config.mqttServer);
+    s_prefs.putUShort("mq_port", config.mqttPort);
+    s_prefs.putString("mq_usr", config.mqttUser);
+    s_prefs.putString("mq_pwd", config.mqttPass);
+    s_prefs.putString("mq_top", config.mqttTopic);
     return true;
 
 #elif defined(ARDUINO_ARCH_ESP8266) || defined(ESP8266)
@@ -221,6 +235,17 @@ bool StorageManager::loadSystemConfig(SystemConfig& config) {
     strncpy(config.apPassword, s.c_str(), sizeof(config.apPassword) - 1);
 
     config.travelTimeSec = s_prefs.getUShort("travel_t", config.travelTimeSec);
+
+    config.mqttEnabled = s_prefs.getBool("mq_en", config.mqttEnabled);
+    s = s_prefs.getString("mq_srv", config.mqttServer);
+    strncpy(config.mqttServer, s.c_str(), sizeof(config.mqttServer) - 1);
+    config.mqttPort = s_prefs.getUShort("mq_port", config.mqttPort);
+    s = s_prefs.getString("mq_usr", config.mqttUser);
+    strncpy(config.mqttUser, s.c_str(), sizeof(config.mqttUser) - 1);
+    s = s_prefs.getString("mq_pwd", config.mqttPass);
+    strncpy(config.mqttPass, s.c_str(), sizeof(config.mqttPass) - 1);
+    s = s_prefs.getString("mq_top", config.mqttTopic);
+    strncpy(config.mqttTopic, s.c_str(), sizeof(config.mqttTopic) - 1);
     return true;
 
 #elif defined(ARDUINO_ARCH_ESP8266) || defined(ESP8266)

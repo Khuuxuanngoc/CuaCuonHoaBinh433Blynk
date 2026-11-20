@@ -65,9 +65,9 @@
 // ============================================================================
 // ESP32 sử dụng Preferences (NVS Flash), ESP8266 sử dụng EEPROM Sector
 #define NVS_NAMESPACE           "cuacuon"
-#define EEPROM_MAGIC_KEY        0x4B59   // 'KY' kiểm tra dữ liệu EEPROM v2 hợp lệ (RF + Cấu hình)
+#define EEPROM_MAGIC_KEY        0x4B5C   // 'K\' kiểm tra dữ liệu EEPROM v3 hợp lệ (RF + Cấu hình + MQTT)
 #define EEPROM_START_ADDR       0
-#define EEPROM_SIZE_BYTES       512
+#define EEPROM_SIZE_BYTES       1024
 
 // ============================================================================
 // NÚT KHÔI PHỤC CÀI ĐẶT GỐC (FACTORY RESET HARDWARE)
@@ -100,7 +100,7 @@
 #define WIFI_AP_SSID            "CuaCuon_HoaBinh"  // Tên WiFi phát ra từ ESP
 #define WIFI_AP_PASS            "12345678"         // Mật khẩu WiFi (tối thiểu 8 ký tự)
 
-// Chế độ kết nối WiFi gia đình (Station - Để gửi dữ liệu lên Google Sheets):
+// Chế độ kết nối WiFi gia đình (Station - Để gửi dữ liệu lên Google Sheets & MQTT):
 #define WIFI_STA_SSID           ""                 // Nhập tên WiFi nhà bạn (để trống nếu chưa dùng)
 #define WIFI_STA_PASS           ""                 // Mật khẩu WiFi nhà bạn
 
@@ -113,5 +113,15 @@
 // Dán URL Web App của bạn từ Google Apps Script (bước triển khai):
 #define GAS_WEBHOOK_URL         ""
 #define GAS_WEBHOOK_TOKEN       "HoaBinh_RollingDoor_2026"
+
+// ============================================================================
+// CẤU HÌNH MQTT CLOUD (ĐIỀU KHIỂN TỨC THÌ < 0.2s QUA 4G)
+// ============================================================================
+#define DEFAULT_MQTT_ENABLED    false              // Mặc định tắt, bật khi người dùng cấu hình
+#define DEFAULT_MQTT_SERVER     ""                 // Ví dụ: broker.emqx.io hoặc xxx.hivemq.cloud
+#define DEFAULT_MQTT_PORT       1883               // 1883 (Non-TLS) hoặc 8883 (TLS bảo mật)
+#define DEFAULT_MQTT_USER       ""
+#define DEFAULT_MQTT_PASS       ""
+#define DEFAULT_MQTT_TOPIC      "hoabinh/cuacuon"  // Tiền tố topic: <topic>/command và <topic>/state
 
 #endif // CONFIG_H

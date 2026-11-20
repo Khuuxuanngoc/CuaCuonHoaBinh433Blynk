@@ -1,4 +1,5 @@
 #include "WebServerManager.h"
+#include "MqttManager.h"
 
 // ============================================================================
 // HTML WEB APP NỘI BỘ TRÊN ESP (LƯU TRONG PROGMEM FLASH)
@@ -211,7 +212,43 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
           <input type="number" id="travelSec" class="form-input" placeholder="25">
         </div>
 
-        <button onclick="saveWifiConfig()" class="btn-action">💾 LƯU & KẾT NỐI WIFI</button>
+        <!-- Khối Cấu hình MQTT Cloud -->
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:12px;margin:12px 0;text-align:left">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-size:13px;font-weight:700;color:#38bdf8">⚡ MQTT Cloud (Điều khiển tức thì &lt; 0.2s)</span>
+            <label style="font-size:12px;color:#94a3b8;cursor:pointer">
+              <input type="checkbox" id="mqttEnabled" style="vertical-align:middle;margin-right:4px"> Kích hoạt
+            </label>
+          </div>
+          <p style="font-size:11px;color:#94a3b8;margin-bottom:10px">Hỗ trợ HiveMQ Cloud, EMQX, Adafruit IO... Giúp bấm nút qua 4G nhận ngay lập tức.</p>
+          <div class="form-group">
+            <label class="form-label">Broker Host (Server)</label>
+            <input type="text" id="mqttServer" class="form-input" placeholder="vd: broker.emqx.io hoặc xxx.hivemq.cloud">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="form-group">
+              <label class="form-label">Cổng (1883 hoặc 8883 TLS)</label>
+              <input type="number" id="mqttPort" class="form-input" placeholder="1883">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tiền tố Topic</label>
+              <input type="text" id="mqttTopic" class="form-input" placeholder="hoabinh/cuacuon">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="form-group">
+              <label class="form-label">Username</label>
+              <input type="text" id="mqttUser" class="form-input" placeholder="Để trống nếu không có">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password</label>
+              <input type="password" id="mqttPass" class="form-input" placeholder="Để trống nếu không có">
+            </div>
+          </div>
+          <div id="mqttStatusText" style="font-size:11px;color:#64748b;margin-top:4px">Trạng thái: Chưa kích hoạt</div>
+        </div>
+
+        <button onclick="saveWifiConfig()" class="btn-action">💾 LƯU CẤU HÌNH & KẾT NỐI</button>
         <div id="wifiMsg" class="msg-box"></div>
 
         <!-- Khối Thông Tin Phần Cứng & Firmware -->
@@ -405,9 +442,29 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
             document.getElementById('ipBadge').innerText = data.apIP;
           }
 
-          if (!document.getElementById('staSSID').value && data.staSSID) document.getElementById('staSSID').value = data.staSSID;
-          if (!document.getElementById('gasUrl').value && data.gasUrl) document.getElementById('gasUrl').value = data.gasUrl;
-          if (!document.getElementById('travelSec').value && data.travelTime) document.getElementById('travelSec').value = data.travelTime;
+          if (!window.formLoaded) {
+            if (data.staSSID) document.getElementById('staSSID').value = data.staSSID;
+            if (data.gasUrl) document.getElementById('gasUrl').value = data.gasUrl;
+            if (data.travelTime) document.getElementById('travelSec').value = data.travelTime;
+
+            if (data.mqttServer) document.getElementById('mqttServer').value = data.mqttServer;
+            if (data.mqttPort) document.getElementById('mqttPort').value = data.mqttPort;
+            if (data.mqttTopic) document.getElementById('mqttTopic').value = data.mqttTopic;
+            if (data.mqttUser) document.getElementById('mqttUser').value = data.mqttUser;
+            document.getElementById('mqttEnabled').checked = !!data.mqttEnabled;
+            window.formLoaded = true;
+          }
+
+          let mqText = document.getElementById('mqttStatusText');
+          if (mqText) {
+            if (!data.mqttEnabled) {
+              mqText.innerHTML = "Trạng thái: <span style='color:#64748b'>Chưa kích hoạt</span>";
+            } else if (data.mqttConnected) {
+              mqText.innerHTML = "Trạng thái: <b style='color:#34d399'>🟢 Đã kết nối Broker (" + data.mqttServer + ")</b>";
+            } else {
+              mqText.innerHTML = "Trạng thái: <span style='color:#f87171'>🔴 Đang kết nối lại...</span>";
+            }
+          }
 
           if (data.board) {
             let bb = document.getElementById('boardBadge');
@@ -682,10 +739,21 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
       params.append('gas_url', document.getElementById('gasUrl').value.trim());
       params.append('travel_time', document.getElementById('travelSec').value.trim());
 
+      params.append('mqtt_en', document.getElementById('mqttEnabled').checked ? '1' : '0');
+      params.append('mqtt_server', document.getElementById('mqttServer').value.trim());
+      params.append('mqtt_port', document.getElementById('mqttPort').value.trim());
+      params.append('mqtt_user', document.getElementById('mqttUser').value.trim());
+      params.append('mqtt_pass', document.getElementById('mqttPass').value.trim());
+      params.append('mqtt_topic', document.getElementById('mqttTopic').value.trim());
+
       fetch('/api/config/wifi', { method: 'POST', body: params })
         .then(r => r.json())
         .then(res => {
           showMsg('wifiMsg', res.message, res.success);
+          if (res.success) {
+            window.formLoaded = false;
+            updateStatus();
+          }
         })
         .catch(() => showMsg('wifiMsg', 'Lỗi khi lưu cấu hình', false));
     }
@@ -818,7 +886,7 @@ static const char OTA_HTML[] PROGMEM = R"rawliteral(
 )rawliteral";
 
 WebServerManager::WebServerManager(RollingDoorController& controller, DoorMotionTracker& tracker, GoogleSheetClient& sheetClient)
-    : _controller(controller), _tracker(tracker), _sheetClient(sheetClient), _server(80),
+    : _controller(controller), _tracker(tracker), _sheetClient(sheetClient), _mqttManager(nullptr), _server(80),
       _staState(STA_IDLE), _staConnectStartTime(0), _lastStaRetryTime(0),
       _otaSuccess(false), _otaAuthenticated(false) {
 }
@@ -988,10 +1056,11 @@ void WebServerManager::handleApiStatus() {
     flashMB = ESP.getFlashChipSize() / (1024 * 1024);
 #endif
 
-    char json[640];
+    char json[800];
     snprintf(json, sizeof(json),
              "{\"state\":\"%s\",\"stateCode\":%u,\"percentage\":%u,\"openDuration\":%lu,\"travelTime\":%u,\"source\":\"%s\","
              "\"apIP\":\"%s\",\"staIP\":\"%s\",\"staConnected\":%s,\"staSSID\":\"%s\",\"gasUrl\":\"%s\","
+             "\"mqttEnabled\":%s,\"mqttConnected\":%s,\"mqttServer\":\"%s\",\"mqttPort\":%u,\"mqttTopic\":\"%s\",\"mqttUser\":\"%s\","
              "\"board\":\"%s\",\"cpu\":\"%s (%uMHz)\",\"flashMB\":%u,\"freeHeap\":%u}",
              _tracker.getStateNameVi(),
              (unsigned int)_tracker.getState(),
@@ -1004,6 +1073,12 @@ void WebServerManager::handleApiStatus() {
              isStaConnected() ? "true" : "false",
              _config.wifiSSID,
              _config.gasWebhookUrl,
+             _config.mqttEnabled ? "true" : "false",
+             (_mqttManager && _mqttManager->isConnected()) ? "true" : "false",
+             _config.mqttServer,
+             (unsigned int)_config.mqttPort,
+             _config.mqttTopic,
+             _config.mqttUser,
              BOARD_TARGET_NAME,
              BOARD_CPU_ARCH,
              (unsigned int)ESP.getCpuFreqMHz(),
@@ -1288,6 +1363,13 @@ void WebServerManager::handleApiConfigWifi() {
     String gasUrl = _server.arg("gas_url");
     String travelStr = _server.arg("travel_time");
 
+    String mqttEnStr = _server.arg("mqtt_en");
+    String mqttSrv = _server.arg("mqtt_server");
+    String mqttPortStr = _server.arg("mqtt_port");
+    String mqttUser = _server.arg("mqtt_user");
+    String mqttPass = _server.arg("mqtt_pass");
+    String mqttTopic = _server.arg("mqtt_topic");
+
     strncpy(_config.wifiSSID, ssid.c_str(), sizeof(_config.wifiSSID) - 1);
     if (pass.length() > 0) {
         strncpy(_config.wifiPass, pass.c_str(), sizeof(_config.wifiPass) - 1);
@@ -1302,8 +1384,35 @@ void WebServerManager::handleApiConfigWifi() {
         }
     }
 
+    _config.mqttEnabled = (mqttEnStr == "1" || mqttEnStr == "true");
+    strncpy(_config.mqttServer, mqttSrv.c_str(), sizeof(_config.mqttServer) - 1);
+    if (mqttPortStr.length() > 0) {
+        uint16_t p = (uint16_t)mqttPortStr.toInt();
+        if (p > 0) _config.mqttPort = p;
+    }
+    strncpy(_config.mqttUser, mqttUser.c_str(), sizeof(_config.mqttUser) - 1);
+    if (mqttPass.length() > 0) {
+        strncpy(_config.mqttPass, mqttPass.c_str(), sizeof(_config.mqttPass) - 1);
+    }
+    if (mqttTopic.length() > 0) {
+        strncpy(_config.mqttTopic, mqttTopic.c_str(), sizeof(_config.mqttTopic) - 1);
+    }
+
     _controller.getStorage().saveSystemConfig(_config);
     _sheetClient.begin(_config.gasWebhookUrl, GAS_WEBHOOK_TOKEN);
+
+    Serial.print(F("[CONFIG] Da luu cau hinh MQTT: "));
+    Serial.print(_config.mqttEnabled ? F("BAT") : F("TAT"));
+    Serial.print(F(" | Host: "));
+    Serial.print(_config.mqttServer);
+    Serial.print(F(":"));
+    Serial.print(_config.mqttPort);
+    Serial.print(F(" | Topic: "));
+    Serial.println(_config.mqttTopic);
+
+    if (_mqttManager) {
+        _mqttManager->setConfig(_config);
+    }
 
     if (strlen(_config.wifiSSID) > 0) {
         _staState = STA_CONNECTING;

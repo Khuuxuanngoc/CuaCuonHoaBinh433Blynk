@@ -19,12 +19,15 @@
     typedef ESP8266WebServer WebServerType;
 #endif
 
+class MqttManager;
+
 /**
  * @class WebServerManager
  * @brief Quản lý Web Server AP, Giao diện Web App Local đa chức năng:
  * - Màn hình khóa đăng nhập bảo mật
  * - Bảng điều khiển cửa cuốn & giám sát chuyển động
  * - Cấu hình WiFi Station & Google Apps Script Webhook
+ * - Cấu hình MQTT Cloud (Điều khiển tức thì < 0.2s)
  * - Quản lý đổi mật khẩu 2 lớp (WiFi AP Pass & Master Pass)
  * - Nạp Firmware Web OTA trực tiếp qua trình duyệt
  * Hỗ trợ đồng thời cả ESP32-S3 và ESP8266.
@@ -33,6 +36,11 @@ class WebServerManager {
 public:
     WebServerManager(RollingDoorController& controller, DoorMotionTracker& tracker, GoogleSheetClient& sheetClient);
     ~WebServerManager();
+
+    /**
+     * @brief Gán MqttManager để cập nhật và giám sát trạng thái qua Web AP
+     */
+    void setMqttManager(MqttManager* mqtt) { _mqttManager = mqtt; }
 
     /**
      * @brief Khởi động WiFi AP/STA và Web Server
@@ -96,6 +104,7 @@ private:
     RollingDoorController& _controller;
     DoorMotionTracker& _tracker;
     GoogleSheetClient& _sheetClient;
+    MqttManager* _mqttManager;
     WebServerType _server;
     SystemConfig _config;
 

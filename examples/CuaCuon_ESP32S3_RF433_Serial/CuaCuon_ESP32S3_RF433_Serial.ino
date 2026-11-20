@@ -13,11 +13,13 @@
 #include "WebServerManager.h"
 #include "GoogleSheetClient.h"
 #include "SerialCLI.h"
+#include "MqttManager.h"
 
 // Khởi tạo các đối tượng điều khiển theo kiến trúc OOP
 RollingDoorController doorController;
 DoorMotionTracker     motionTracker;
 GoogleSheetClient     sheetClient;
+MqttManager           mqttManager(doorController, motionTracker);
 WebServerManager      webServer(doorController, motionTracker, sheetClient);
 SerialCLI             serialCli(doorController);
 
@@ -57,6 +59,9 @@ void onMotionChanged(MotionState state, const char* stateName, uint32_t openDura
                           (state == MOTION_STOPPED) ? "TẠM DỪNG" : "KHÓA HỘP";
         sheetClient.sendEvent(evt, stateName, openDurationSec, source);
     }
+
+    // Báo cáo trạng thái tức thời qua MQTT Cloud nếu đang kết nối
+    mqttManager.publishState(source);
 }
 
 // Xử lý kiểm tra nút BOOT / FLASH để khôi phục cài đặt gốc
@@ -158,10 +163,14 @@ void setup() {
     sheetClient.setController(&doorController);
     sheetClient.begin(cfg.gasWebhookUrl, GAS_WEBHOOK_TOKEN);
 
-    // 5. Khởi tạo WebServer AP và Web App Local
+    // 5. Khởi tạo MQTT Manager (Điều khiển tức thì < 0.2s)
+    mqttManager.begin(cfg);
+
+    // 6. Khởi tạo WebServer AP và Web App Local
+    webServer.setMqttManager(&mqttManager);
     webServer.begin();
 
-    // 6. Khởi tạo giao diện dòng lệnh Serial CLI
+    // 7. Khởi tạo giao diện dòng lệnh Serial CLI
     serialCli.begin();
 
     Serial.println(F("----------------------------------------------------------"));
@@ -180,6 +189,7 @@ void loop() {
     serialCli.update();
     webServer.update();
     sheetClient.update();
+    mqttManager.update();
 
     // Giám sát nút BOOT vật lý để Factory Reset
     checkFactoryResetButton();

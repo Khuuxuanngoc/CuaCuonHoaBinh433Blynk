@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## [2.1.0] - 2026-11-20
+### Added
+- **Tích hợp MQTT Cloud (Điều khiển tức thì < 0.2s qua 4G/Internet)**:
+  - Thêm module `MqttManager` hỗ trợ cả kết nối TCP tiêu chuẩn (Port 1883) và bảo mật SSL/TLS (Port 8883 - HiveMQ Cloud).
+  - Tối ưu bộ đệm BearSSL trên ESP8266 (`1024 bytes`) tránh tràn RAM.
+  - Cơ chế Non-blocking tự động kết nối lại khi có WiFi mà không bao giờ gây treo sóng Web AP hay nút bấm.
+  - Tự động báo trạng thái sống LWT (`<topic>/status`), nhận lệnh tức thì (`<topic>/command`), phát trạng thái JSON (`<topic>/state`).
+  - Tích hợp giao diện bật/tắt và điền thông số Broker ngay trong Tab **WIFI & CLOUD** của Web AP Local.
+- **Khắc phục triệt để lỗi treo Web AP khi router nhà mất điện**:
+  - `handleStaConnection()` State Machine: Hạn chế thử kết nối WiFi nhà tối đa 10 giây, sau đó gọi `WiFi.disconnect(false)` ngắt channel-hopping để giữ sóng SoftAP `192.168.4.1` luôn ổn định < 5ms.
+  - Frontend `fetchWithTimeout()` 4 giây chống treo trình duyệt.
+- **Bảo vệ an toàn chống nạp nhầm Firmware Web OTA**:
+  - Tự động nhận diện bo mạch và kiến trúc chip trên giao diện Web OTA `/update`.
+  - Kiểm tra Magic Byte và Chip ID phần cứng ngay từ gói tin đầu tiên, chủ động từ chối nạp file `.bin` ESP32 vào ESP8266 hoặc ngược lại để chống brick bo mạch.
+- **Chuẩn hóa Terminal Serial**: Chuyển toàn bộ `Serial.print` sang tiếng Việt không dấu (`tieng viet khong dau`) chống lỗi font màn hình.
+
 ## [2.0.0] - 2026-11-19
 ### Added
 - **Màn hình đăng nhập & Quản lý bảo mật 2 lớp**:

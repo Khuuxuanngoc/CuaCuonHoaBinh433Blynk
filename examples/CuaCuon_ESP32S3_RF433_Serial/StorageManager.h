@@ -16,6 +16,14 @@ struct SystemConfig {
     char webPassword[33];    // Mật khẩu Quản trị Master (Bảng điều khiển & Cài đặt)
     char apPassword[33];     // Mật khẩu WiFi AP phát ra từ ESP (tối thiểu 8 ký tự)
     uint16_t travelTimeSec;  // Thời gian hành trình cửa (giây)
+
+    // Cấu hình MQTT Cloud
+    bool mqttEnabled;        // Bật/tắt kết nối MQTT
+    char mqttServer[64];     // Host Broker (ví dụ: broker.emqx.io hoặc xxxxx.s1.eu.hivemq.cloud)
+    uint16_t mqttPort;       // Cổng (1883 hoặc 8883)
+    char mqttUser[33];       // Username đăng nhập Broker
+    char mqttPass[33];       // Password đăng nhập Broker
+    char mqttTopic[33];      // Tiền tố topic (mặc định: hoabinh/cuacuon)
 };
 
 /**
