@@ -10,8 +10,11 @@ RollingDoorController::RollingDoorController()
       _lastLedToggleTime(0),
       _ledState(false),
       _snifferMode(false),
+      _lastLearnSuccess(false),
+      _lastLearnFinished(false),
       _onLearnCb(nullptr),
       _onActionCb(nullptr),
+      _onRemoteReceivedCb(nullptr),
       _onSniffCb(nullptr),
       _onStateChangeCb(nullptr) {
 }
@@ -33,8 +36,17 @@ bool RollingDoorController::begin(int8_t rxPin, int8_t txPin, int8_t ledPin) {
 
     // Khởi tạo bộ nhớ lưu trữ
     if (_storage.begin()) {
-        // Tải các lệnh đã lưu trước đó nếu có
-        _storage.loadAll(_commands);
+        if (_storage.hasSavedData()) {
+            // Tải các lệnh đã lưu trước đó trong Flash
+            _storage.loadAll(_commands);
+        } else if (PRESET_CODE_UP != 0) {
+            // Tự động nạp mã cấu hình sẵn từ Config.h (nếu có khai báo)
+            _commands[ACTION_UP]   = RFCommand(PRESET_CODE_UP, PRESET_BIT_LENGTH, PRESET_PROTOCOL, PRESET_PULSE_LENGTH);
+            _commands[ACTION_DOWN] = RFCommand(PRESET_CODE_DOWN, PRESET_BIT_LENGTH, PRESET_PROTOCOL, PRESET_PULSE_LENGTH);
+            _commands[ACTION_STOP] = RFCommand(PRESET_CODE_STOP, PRESET_BIT_LENGTH, PRESET_PROTOCOL, PRESET_PULSE_LENGTH);
+            _commands[ACTION_LOCK] = RFCommand(PRESET_CODE_LOCK, PRESET_BIT_LENGTH, PRESET_PROTOCOL, PRESET_PULSE_LENGTH);
+            _storage.saveAll(_commands);
+        }
     }
 
     setState(STATE_IDLE, "Ready");
@@ -52,6 +64,8 @@ void RollingDoorController::update() {
         // Kiểm tra Hết hạn thời gian chờ học lệnh (Timeout)
         if (now - _learnStartTime >= _learnTimeoutMs) {
             DoorAction timedOutAction = _learnAction;
+            _lastLearnFinished = true;
+            _lastLearnSuccess = false;
             setState(STATE_IDLE, "Learn Timeout");
 
             if (_onLearnCb) {
@@ -72,6 +86,11 @@ void RollingDoorController::update() {
                     // Lưu lệnh vừa học vào mảng tạm thời
                     _commands[_learnAction] = receivedCmd;
                     _storage.setModified(true);
+                    _storage.saveAll(_commands); // Tự động lưu vĩnh viễn vào Flash ngay khi học thành công
+
+                    _lastLearnFinished = true;
+                    _lastLearnSuccess = true;
+                    _lastLearnedCmd = receivedCmd;
 
                     DoorAction learnedAction = _learnAction;
                     setState(STATE_IDLE, "Learn Success");
@@ -94,9 +113,22 @@ void RollingDoorController::update() {
             }
         }
     } else {
-        // Trạng thái bình thường: Xóa bộ đệm nhận để không bị đầy RAM
+        // Trạng thái bình thường: Luôn lắng nghe sóng RF trong không khí (Bắt mọi remote bấm ngoài nhà)
         if (_rf.isReceiverAvailable()) {
-            _rf.resetReceiver();
+            RFCommand ambientCmd;
+            if (_rf.readReceivedCommand(ambientCmd)) {
+                if (now - _lastCaptureTime > DEBOUNCE_LEARN_MS) {
+                    _lastCaptureTime = now;
+                    for (uint8_t i = 0; i < ACTION_COUNT; i++) {
+                        if (_commands[i].isValid && _commands[i].code == ambientCmd.code) {
+                            if (_onRemoteReceivedCb) {
+                                _onRemoteReceivedCb((DoorAction)i, ambientCmd);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -108,6 +140,8 @@ bool RollingDoorController::startLearning(DoorAction action, uint32_t timeoutMs)
     _learnTimeoutMs = timeoutMs;
     _learnStartTime = millis();
     _lastCaptureTime = 0;
+    _lastLearnSuccess = false;
+    _lastLearnFinished = false;
 
     _rf.resetReceiver();
     _rf.enableReceiver();
@@ -118,6 +152,8 @@ bool RollingDoorController::startLearning(DoorAction action, uint32_t timeoutMs)
 
 void RollingDoorController::cancelLearning() {
     if (_state == STATE_LEARNING) {
+        _lastLearnFinished = true;
+        _lastLearnSuccess = false;
         setState(STATE_IDLE, "Learn Canceled");
     }
 }

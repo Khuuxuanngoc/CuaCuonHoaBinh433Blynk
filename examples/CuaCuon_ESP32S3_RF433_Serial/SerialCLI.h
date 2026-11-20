@@ -42,6 +42,11 @@ private:
     void handleLoad();
     void handleClear();
     void handleSniff(char* args);
+    void handleExport();
+    void handleImport(char* args);
+    void handleSet(char* args);
+    void handleReset();
+    void handleWifiInfo();
 
     // Callbacks tĩnh nhận sự kiện từ controller
     static void staticOnLearn(DoorAction action, const RFCommand& cmd, bool success);
@@ -51,7 +56,7 @@ private:
 
     RollingDoorController& _controller;
 
-    static const uint8_t BUFFER_SIZE = 64;
+    static const uint8_t BUFFER_SIZE = 128;
     char _buffer[BUFFER_SIZE];
     uint8_t _bufIndex;
 

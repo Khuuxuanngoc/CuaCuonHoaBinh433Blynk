@@ -55,7 +55,7 @@ inline const char* getActionName(DoorAction action) {
 }
 
 /**
- * @brief Lấy mô tả tiếng Việt của hành động
+ * @brief Lấy mô tả tiếng Việt của hành động (có dấu cho Web App)
  */
 inline const char* getActionDescVi(DoorAction action) {
     switch (action) {
@@ -64,6 +64,19 @@ inline const char* getActionDescVi(DoorAction action) {
         case ACTION_STOP:  return "Dừng (Tạm dừng)";
         case ACTION_LOCK:  return "Khóa (Khóa cửa)";
         default:           return "Không xác định";
+    }
+}
+
+/**
+ * @brief Lấy mô tả tiếng Việt không dấu (cho Serial Monitor tránh lỗi font)
+ */
+inline const char* getActionDescNoAccent(DoorAction action) {
+    switch (action) {
+        case ACTION_UP:    return "Len (Mo cua)";
+        case ACTION_DOWN:  return "Xuong (Dong cua)";
+        case ACTION_STOP:  return "Dung (Tam dung)";
+        case ACTION_LOCK:  return "Khoa (Khoa cua)";
+        default:           return "Khong xac dinh";
     }
 }
 

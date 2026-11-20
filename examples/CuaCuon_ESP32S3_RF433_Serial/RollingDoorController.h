@@ -12,6 +12,7 @@
  */
 typedef void (*OnLearnCallback)(DoorAction action, const RFCommand& cmd, bool success);
 typedef void (*OnActionCallback)(DoorAction action, const RFCommand& cmd);
+typedef void (*OnRemoteReceivedCallback)(DoorAction action, const RFCommand& cmd);
 typedef void (*OnSniffCallback)(const RFCommand& cmd);
 typedef void (*OnStateChangeCallback)(ControllerState state, const char* message);
 
@@ -141,9 +142,23 @@ public:
      */
     bool isModified() const { return _storage.isModified(); }
 
+    /**
+     * @brief Kiểm tra kết quả lần học lệnh gần nhất
+     */
+    bool isLastLearnFinished() const { return _lastLearnFinished; }
+    bool isLastLearnSuccess() const { return _lastLearnSuccess; }
+    const RFCommand& getLastLearnedCommand() const { return _lastLearnedCmd; }
+
+    /**
+     * @brief Truy cập trực tiếp đối tượng StorageManager
+     */
+    StorageManager& getStorage() { return _storage; }
+    const StorageManager& getStorage() const { return _storage; }
+
     // Đăng ký Callback sự kiện
     void setOnLearnCallback(OnLearnCallback cb) { _onLearnCb = cb; }
     void setOnActionCallback(OnActionCallback cb) { _onActionCb = cb; }
+    void setOnRemoteReceivedCallback(OnRemoteReceivedCallback cb) { _onRemoteReceivedCb = cb; }
     void setOnSniffCallback(OnSniffCallback cb) { _onSniffCb = cb; }
     void setOnStateChangeCallback(OnStateChangeCallback cb) { _onStateChangeCb = cb; }
 
@@ -167,9 +182,13 @@ private:
     bool _ledState;
 
     bool _snifferMode;
+    bool _lastLearnSuccess;
+    bool _lastLearnFinished;
+    RFCommand _lastLearnedCmd;
 
     OnLearnCallback _onLearnCb;
     OnActionCallback _onActionCb;
+    OnRemoteReceivedCallback _onRemoteReceivedCb;
     OnSniffCallback _onSniffCb;
     OnStateChangeCallback _onStateChangeCb;
 };

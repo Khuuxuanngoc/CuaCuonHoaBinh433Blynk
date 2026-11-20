@@ -87,8 +87,56 @@ Sau khi nạp chương trình vào bo mạch:
 | `save` | Ghi vĩnh viễn các lệnh vừa học vào bộ nhớ Flash (NVS / EEPROM). |
 | `load` | Tải lại các lệnh đã lưu từ Flash ra RAM. |
 | `clear` | Xóa sạch bộ nhớ Flash và đặt các nút về trạng thái chưa học. |
+| `export` | Xuất 4 mã đã học từ ESP32-S3 để copy sang ESP8266 (hoặc dán vào `Config.h`). |
+| `import <u d s l>` | Nạp nhanh toàn bộ 4 mã vào bộ nhớ mà không cần remote (Tự lưu vào Flash).<br>Ví dụ: `import 0xA1B2C3 0xA1B2C4 0xA1B2C5 0xA1B2C6 24 1 350` |
+| `set <nut> <code>` | Gán thủ công mã RF cho một nút xác định.<br>Ví dụ: `set up 0xA1B2C3 24 1 350` |
+| `set pass <pwd>` | Đổi Master Password nhanh chóng qua cổng Serial. |
+| `set ap <pwd>` | Đổi mật khẩu phát WiFi AP của ESP (tối thiểu 8 ký tự). |
+| `set wifi <s> <p>` | Cài đặt WiFi gia đình (SSID và Mật khẩu). |
+| `set gas <url>` | Cài đặt đường dẫn Google Apps Script Webhook. |
+| `wifi` hoặc `ip` | Xem thông tin IP, WiFi và mật khẩu hiện tại. |
+| `reset` | Khôi phục toàn bộ cài đặt gốc (Factory Reset) và khởi động lại. |
 | `sniff on` | Bật chế độ quét sóng liên tục (hữu ích để dò remote lạ hoặc test bộ thu). |
 | `sniff off` | Tắt chế độ quét sóng liên tục. |
+
+---
+
+## 5. Mô Hình Bảo Mật 2 Mật Khẩu (Security Model)
+
+Hệ thống tối ưu hóa trải nghiệm người dùng với mô hình phân cấp **2 Mật Khẩu**:
+
+1. **Mật khẩu WiFi AP của ESP (Mặc định: `12345678`)**:
+   - Dùng để kết nối điện thoại vào mạng WiFi nội bộ phát ra từ ESP (`CuaCuon_HoaBinh`).
+   - Chuẩn bảo mật WPA2 yêu cầu tối thiểu 8 ký tự.
+2. **Mật khẩu Quản trị Master (Mặc định: `123456`)**:
+   - Dùng để mở khóa màn hình đăng nhập bảng điều khiển Web App Local (`192.168.4.1` hoặc IP mạng nhà).
+   - Dùng để đăng nhập Web App trên Google Apps Script (truy cập từ xa 4G).
+   - Dùng để xác thực nạp Firmware Web OTA (`/update`).
+
+---
+
+## 6. Giao Diện Web App Local & Cấu Hình Trực Tiếp
+
+Khi kết nối vào WiFi `CuaCuon_HoaBinh`, mở trình duyệt truy cập: **`http://192.168.4.1`** (hoặc IP mạng nhà):
+
+- **Màn hình đăng nhập**: Nhập Master Password để mở khóa toàn bộ bảng điều khiển.
+- **Tab 1 - Điều khiển**: 4 nút bấm to (Lên, Xuống, Dừng, Khóa), trạng thái cửa, thanh tiến trình % hành trình, đồng hồ đếm thời gian mở.
+- **Tab 2 - Học lệnh & Cài đặt mã RF**:
+  - Xem thông số 4 nút: Hex, Dec, Bits, Protocol, Độ rộng xung us.
+  - **Học lệnh không dây**: Bấm nút **📡 Học Lệnh**, modal đếm ngược 15s với animation radar hiện ra, bấm giữ remote gần anten -> ESP tự bắt mã và lưu vĩnh viễn vào Flash!
+  - **Phát thử & Sửa mã**: Thử phát sóng trực tiếp hoặc sửa thủ công thông số mã RF.
+  - **Xuất / Nhập mã (Export / Import)**: Copy hoặc dán chuỗi 4 mã RF để nạp nhanh sang ESP khác mà không cần remote.
+- **Tab 3 - Cài đặt WiFi & Cloud**: Quét mạng WiFi xung quanh, chọn mạng, nhập mật khẩu WiFi nhà, nhập Google Script URL và thời gian hành trình cửa. Bấm **Lưu & Kết nối** để ESP tự động kết nối mạng gia đình.
+- **Tab 4 - Đổi mật khẩu**: Cho phép đổi mật khẩu WiFi AP và Master Password trực tiếp trên điện thoại.
+- **Web OTA (`/update`)**: Nâng cấp firmware file `.bin` trực tiếp qua WiFi có bảo vệ bằng Master Password.
+
+---
+
+## 7. Khôi Phục Cài Đặt Gốc Phần Cứng (Hardware Factory Reset)
+
+Nếu lỡ quên mật khẩu hoặc cần bàn giao thiết bị:
+- **Cách 1 (Nút BOOT vật lý)**: Nhấn và giữ nút **BOOT** (GPIO 0 trên ESP32) hoặc **FLASH** (D3 trên ESP8266) trong **5 giây**. Đèn LED trạng thái sẽ nhấp nháy nhanh liên tục và ESP tự động xóa Flash, đưa toàn bộ mật khẩu và WiFi về mặc định ban đầu (`123456` / `12345678`).
+- **Cách 2 (Serial CLI)**: Cắm cổng USB mở Serial Monitor gõ `reset` hoặc `set pass 123456`.
 
 ---
 
